@@ -15,13 +15,14 @@ import app as approot
 try:
   import config
 except:
+  #print "import config failed, use default config"
   class Config(dict):
     def __getattr__(self, key):
       return self[key]
     def __setattr__(self, key, value):
       self[key] = value
   config = Config(templates_dir="templates",
-                  root_path="",
+                  root_path="/",
                   dict_to_json=True,
                   use_debugger=True,
                   use_reloader=True)
@@ -64,6 +65,7 @@ class Root(object):
 
   def __init__(self):
     self.url_map = Map(self.get_url_map(approot))
+    #print self.url_map
 
   def route(self, routes):
     for pattern, endpoint in routes:
@@ -82,8 +84,8 @@ class Root(object):
         arginfo = inspect.getargspec(attr)
         args = arginfo.args
         defaults = arginfo.defaults
-        rp = config.root_path
-        np = node.__name__.replace('%s.' % approot.__name__, '/').replace('.', '/')
+        rp = config.root_path if config.root_path.endswith('/') else "%s/" % config.root_path
+        np = node.__name__.replace('%s.' % approot.__name__, '').replace('.', '/')
         ap = attr.__name__
         abspath = urlparse.urljoin(urlparse.urljoin(rp, np + '/'), ap + '/')
         args_size = len(args) if args else 0
@@ -92,14 +94,14 @@ class Root(object):
           args_str = "".join(["<%s>/" % arg for arg in args[:idx]])
           rules.append(Rule(abspath + args_str, endpoint=attr))
 
-        if ap == 'default':
+        if ap == 'index' or ap == 'default':
           ap = ''
           abspath = urlparse.urljoin(urlparse.urljoin(rp, np + '/'), ap)
           for idx in range(args_size-defaults_size, args_size+1):
             args_str = "".join(["<%s>/" % arg for arg in args[:idx]])
             rules.append(Rule(abspath + args_str, endpoint=attr))
         if np.endswith('index'):
-          np = np[-6]
+          np = np[:-5]
           abspath = urlparse.urljoin(urlparse.urljoin(rp, np), ap) + ('/' if ap else "")
           for idx in range(args_size-defaults_size, args_size+1):
             args_str = "".join(["<%s>/" % arg for arg in args[:idx]])
