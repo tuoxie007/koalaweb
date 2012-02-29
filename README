@@ -1,0 +1,15 @@
+
+Usage:
+python code like this:
+1. write one or more modules in app/ directory
+
+2. import this modules in app/__init__.py
+
+3. write main.py like this:
+  import koalaweb as web
+  app = web.create_app()
+  app.run()
+
+
+So easy! yeah?
+Enjoy!
