@@ -33,7 +33,7 @@ except:
   approot = object()
 
 try:
-  import conf
+  import koalaconf as conf
 except:
   #print "import conf failed, use default conf"
   class Config(dict):
