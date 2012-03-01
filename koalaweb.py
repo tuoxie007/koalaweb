@@ -10,26 +10,45 @@ from werkzeug.serving import run_simple
 
 from jinja2 import Environment, FileSystemLoader
 
-import app as approot
+__version__ = "0.1a2"
+__author__ = "Xu Ke"
+__email__ = "support@tuoxie.me"
+__url__ = "https://github.com/tuoxie007/koalaweb"
+
+
+"""
+Web Framework for lazy man like koala
+
+* Itelligent route
+* Easy context access
+* Powerful template engine
+
+Appoint is greater than configuration.
+
+"""
 
 try:
-  import config
+  import app as approot
 except:
-  #print "import config failed, use default config"
+  approot = object()
+
+try:
+  import conf
+except:
+  #print "import conf failed, use default conf"
   class Config(dict):
     def __getattr__(self, key):
       return self[key]
     def __setattr__(self, key, value):
       self[key] = value
-  config = Config(templates_dir="templates",
+  conf = Config(templates_dir="templates",
                   root_path="/",
                   dict_to_json=True,
                   use_debugger=True,
                   use_reloader=True)
 
-
 jinja_env = Environment(loader=FileSystemLoader(os.path.join(os.getcwd(), 
-                                                             config.templates_dir)), 
+                                                             conf.templates_dir)), 
                         autoescape=True)
 
 def render_template(template_name, **context):
@@ -84,7 +103,7 @@ class Root(object):
         arginfo = inspect.getargspec(attr)
         args = arginfo.args
         defaults = arginfo.defaults
-        rp = config.root_path if config.root_path.endswith('/') else "%s/" % config.root_path
+        rp = conf.root_path if conf.root_path.endswith('/') else "%s/" % conf.root_path
         np = node.__name__.replace('%s.' % approot.__name__, '').replace('.', '/')
         ap = attr.__name__
         abspath = urlparse.urljoin(urlparse.urljoin(rp, np + '/'), ap + '/')
@@ -131,7 +150,7 @@ class Root(object):
     if isinstance(response, collections.Callable):
       return response(environ, start_response)
     else:
-      if config.dict_to_json and isinstance(response, dict):
+      if conf.dict_to_json and isinstance(response, dict):
         import json
         response = json.dumps(response)
       return Response(response, mimetype='text/html')(environ, start_response)
@@ -140,8 +159,8 @@ class Root(object):
     run_simple(host, 
                port,
                self, 
-               use_debugger=config.use_debugger, 
-               use_reloader=config.use_reloader, 
+               use_debugger=conf.use_debugger, 
+               use_reloader=conf.use_reloader, 
                processes=processes)
 
   def __call__(self, environ, start_response):
