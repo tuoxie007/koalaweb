@@ -182,6 +182,8 @@ class Root(object):
     except NotFound, e:
       return self.error_404()
     except HTTPException, e:
+      return e
+    except:
       if config.use_debugger:
           raise e
       return Response('Sorry! Server is temporary unreachable.', status=500)
