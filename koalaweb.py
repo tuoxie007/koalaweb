@@ -15,6 +15,14 @@ __author__ = "Xu Ke"
 __email__ = "support@tuoxie.me"
 __url__ = "https://github.com/tuoxie007/koalaweb"
 
+class Model(dict):
+  def __getattr__(self, key):
+    if self.has_key(key):
+      return self[key]
+    return None
+
+  def __setattr__(self, key, value):
+    self[key] = value
 
 """
 Web Framework for lazy man like koala
@@ -28,32 +36,60 @@ Appoint is greater than configuration.
 """
 
 try:
-  import app as approot
+    import app as approot
 except:
-  approot = object()
+    approot = object()
 
 try:
-  import koalaconf as conf
+    import koalaconf as config
 except:
-  #print "import conf failed, use default conf"
-  class Config(dict):
-    def __getattr__(self, key):
-      return self[key]
-    def __setattr__(self, key, value):
-      self[key] = value
-  conf = Config(templates_dir="templates",
-                  root_path="/",
-                  dict_to_json=True,
-                  use_debugger=True,
-                  use_reloader=True)
+    class Config(dict):
+        def __getattr__(self, key):
+            return self[key]
+        def __setattr__(self, key, value):
+            self[key] = value
+    config = Config(templates_dir="templates",
+                    root_path="/",
+                    dict_to_json=True,
+                    use_debugger=True,
+                    use_reloader=True)
 
 jinja_env = Environment(loader=FileSystemLoader(os.path.join(os.getcwd(), 
-                                                             conf.templates_dir)), 
-                        autoescape=True)
+                                                             config.templates_dir)), 
+                        autoescape=False)
+
+def format_datetime(value, format=None):
+    if not value: return ""
+    if not format: format = "%Y-%m-%d %H:%M:%S"
+    return value.strftime(format)
+
+def markdown(content, html='off'):
+    if not content: return ""
+    if html == "on": return content
+    import markdown
+    return markdown.markdown(content)
+
+jinja_env.filters['datetime'] = format_datetime
+jinja_env.filters['markdown'] = markdown
+
+def is_mobile():
+    user_agent = header("User-Agent")
+    if user_agent:
+        return user_agent.lower().find("mobile") >= 0
+
+def user_agent():
+    ua  = header("User-Agent")
+    return {"is_mobile": us.lower().find("mobile") >= 0,
+            "is_ie": us.lower().find("msid") >= 0}
+
+def redirect(location):
+    return werkzeug.utils.redirect(config.root_path + location)
 
 def render_template(template_name, **context):
   tmpl = jinja_env.get_template(template_name)
-  return tmpl.render(context)
+  tmpl_context = {"base_url": config.root_path}
+  tmpl_context.update(context)
+  return tmpl.render(tmpl_context)
 
 request = None
 def header(key=None):
@@ -73,12 +109,17 @@ def query(key=None):
     return dict(request.values)
   return request.values[key] if request.values.has_key(key) else None
 
-def form(key=None):
-  if key is None:
-    return request.form
-  elif key is True:
-    return dict(request.form)
-  return request.form[key] if request.form.has_key(key) else None
+def form(name=None):
+  data = Model()
+  form_dict = dict(request.form)
+  for key in form_dict:
+    if key.endswith('[]'):
+      data[key[:-2]] = form_dict[key]
+    else:
+      data[key] = form_dict[key][0]
+  if name is None:
+    return data
+  return data[name]
 
 class Root(object):
 
@@ -103,7 +144,7 @@ class Root(object):
         arginfo = inspect.getargspec(attr)
         args = arginfo.args
         defaults = arginfo.defaults
-        rp = conf.root_path if conf.root_path.endswith('/') else "%s/" % conf.root_path
+        rp = config.root_path if config.root_path.endswith('/') else "%s/" % config.root_path
         np = node.__name__.replace('%s.' % approot.__name__, '').replace('.', '/')
         ap = attr.__name__
         abspath = urlparse.urljoin(urlparse.urljoin(rp, np + '/'), ap + '/')
@@ -141,7 +182,9 @@ class Root(object):
     except NotFound, e:
       return self.error_404()
     except HTTPException, e:
-      return e
+      if config.use_debugger:
+          raise e
+      return Response('Sorry! Server is temporary unreachable.', status=500)
 
   def wsgi_app(self, environ, start_response):
     global request
@@ -150,7 +193,7 @@ class Root(object):
     if isinstance(response, collections.Callable):
       return response(environ, start_response)
     else:
-      if conf.dict_to_json and isinstance(response, dict):
+      if config.dict_to_json and isinstance(response, dict):
         import json
         response = json.dumps(response)
       return Response(response, mimetype='text/html')(environ, start_response)
@@ -159,8 +202,8 @@ class Root(object):
     run_simple(host, 
                port,
                self, 
-               use_debugger=conf.use_debugger, 
-               use_reloader=conf.use_reloader, 
+               use_debugger=config.use_debugger, 
+               use_reloader=config.use_reloader, 
                processes=processes)
 
   def __call__(self, environ, start_response):
@@ -171,7 +214,7 @@ def create_app(with_static=True):
   app = Root()
   if with_static:
     app.wsgi_app = SharedDataMiddleware(app.wsgi_app, {
-      '/static':  os.path.join(os.getcwd(), 'static')
+      '/':  os.getcwd()
     })
   return app
 
