@@ -10,7 +10,7 @@ from werkzeug.serving import run_simple
 
 from jinja2 import Environment, FileSystemLoader
 
-__version__ = "0.1a2"
+__version__ = "0.1b2"
 __author__ = "Xu Ke"
 __email__ = "support@tuoxie.me"
 __url__ = "https://github.com/tuoxie007/koalaweb"
